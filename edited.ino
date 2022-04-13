@@ -39,13 +39,13 @@ void readIR(void * pvParameters) {
             ON_SWITCH = false;
         }
           else if(IrReceiver.decodedIRData.command == 0x9){
-            SPEED = SPEED / 2;
-            Serial.println("Delay has been halved, SPEED is now:");
+            SPEED = SPEED * 2;
+            Serial.println("Delay has been decreased, SPEED is now:");
             Serial.println(SPEED);
           }
           else if(IrReceiver.decodedIRData.command == 0x7){
-            SPEED = SPEED * 2;
-            Serial.println("Delay has been doubled, SPEED is now:");
+            SPEED = SPEED / 2;
+            Serial.println("Delay has been increased, SPEED is now:");
             Serial.println(SPEED);
           }
     }
