@@ -25,6 +25,7 @@ bool TRACK_ONE = false;
 bool TRACK_TWO = false;
 bool TRACK_THREE = false;
 bool TRACK_FOUR = false;
+bool CHANGED = false;
 int SPEED = 35;
 TaskHandle_t changeLED;
 TaskHandle_t readIRs;
@@ -45,16 +46,18 @@ void readIR(void * pvParameters) {
         Serial.println();
         IrReceiver.resume(); // Enable receiving of the next value
         if (IrReceiver.decodedIRData.command == 0x45) {
+            Serial.println("Turned On");
             ON_SWITCH = true;
             TRACK_ONE = true;
         } else if (IrReceiver.decodedIRData.command == 0x47) {
+            Serial.println("Turned Off");
             ON_SWITCH = false;
             TRACK_ONE = false;
             TRACK_TWO = false;
             TRACK_THREE = false;
             TRACK_FOUR = false;
-        }
-          else if(IrReceiver.decodedIRData.command == 0x9){
+            CHANGED = true;
+        }else if(IrReceiver.decodedIRData.command == 0x9){
             SPEED = SPEED / 2;
             Serial.println("Delay has been halved, SPEED is now:");
             Serial.println(SPEED);
@@ -64,36 +67,40 @@ void readIR(void * pvParameters) {
             Serial.println("Delay has been doubled, SPEED is now:");
             Serial.println(SPEED);
           }
-          else if(IrReceiver.decodedIRData.command == 0x0){
+          else if(IrReceiver.decodedIRData.command == 0x1c){
             Serial.println("Channel one has been turned on");
             TRACK_ONE = true;
             TRACK_TWO = false;
             TRACK_THREE = false;
             TRACK_FOUR = false;
+            CHANGED = true;
           }
-          else if(IrReceiver.decodedIRData.command == 0x18){
+          else if(IrReceiver.decodedIRData.command == 0x8){
             Serial.println("Channel two has been turned on");
             TRACK_ONE = false;
             TRACK_TWO = true;
             TRACK_THREE = false;
             TRACK_FOUR = false;
+            CHANGED = true;
           }
-          else if(IrReceiver.decodedIRData.command == 0x5E){
+          else if(IrReceiver.decodedIRData.command == 0x5A){
             Serial.println("Channel three has been turned on");
             TRACK_ONE = false;
             TRACK_TWO = false;
             TRACK_THREE = true;
             TRACK_FOUR = false;
+            CHANGED = true;
           }
-          else if(IrReceiver.decodedIRData.command == 0x8){
+          else if(IrReceiver.decodedIRData.command == 0x42){
             Serial.println("Channel four has been turned on");
             TRACK_ONE = false;
             TRACK_TWO = false;
             TRACK_THREE = false;
             TRACK_FOUR = true;
+            CHANGED = true;
           }
     }
-    vTaskDelay(1);
+    vTaskDelay(100);
   }
 }
 
@@ -101,13 +108,13 @@ void changeLEDs(void * pvParameters){
   Serial.print("changeLEDs running on core ");
   Serial.println(xPortGetCoreID());
   while(true){
-
-  // Code for Track One
-  Serial.println("changeLEDs");
   if(ON_SWITCH == true){
-    if(TRACK_ONE == true){
+  // Code for Track One ---------------------------------------------------------------------
+
+  if(TRACK_ONE){
+  Serial.println("changeLEDs");
     Serial.println("ON 1");
-      for(int i = 0; i < NUM_LEDS_PER_STRIP; i++) 
+      for(int i = 0; i < NUM_LEDS_PER_STRIP && !CHANGED; i++) 
       {
         // Green loop
         // set our current dot to Red
@@ -116,13 +123,19 @@ void changeLEDs(void * pvParameters){
         // clear our current dot before we move on
         leds1[i] = CRGB::Green;
         vTaskDelay(SPEED);
+        if(CHANGED){
+          CHANGED = false;
+          blackout();
+          goto pattern1;
+        }
       }
-  
-    
-    if(ON_SWITCH == true)
-    {    
+      if(CHANGED){
+          CHANGED = false;
+          blackout();
+          goto pattern1;
+      }   
       Serial.println("ON 2");
-      for(int i = NUM_LEDS_PER_STRIP-1; i >= 0; i--)
+      for(int i = NUM_LEDS_PER_STRIP-1; i >= 0 && !CHANGED; i--)
       {
         // set our current dot to White
         leds1[i] = CRGB::Black;
@@ -130,58 +143,23 @@ void changeLEDs(void * pvParameters){
         // clear our current dot before we move on
         leds1[i] = CRGB::Blue;
         vTaskDelay(SPEED);
+        if(CHANGED){
+          CHANGED = false;
+          blackout();
+          goto pattern1;
+        }
       }
-
-      //turn off other tracks
-            for(int i = NUM_LEDS_PER_STRIP-1; i >= 0; i--) {
-        // set our current dot to White
-        leds2[i] = CRGB::Black;
-        FastLED.show();
-        
-        // clear our current dot before we move on
-        vTaskDelay(SPEED);
-      }
-            for(int i = NUM_LEDS_PER_STRIP-1; i >= 0; i--) {
-        // set our current dot to White
-        leds3[i] = CRGB::Black;
-        FastLED.show();
-        
-        // clear our current dot before we move on
-        vTaskDelay(SPEED);
-      }
-            for(int i = NUM_LEDS_PER_STRIP-1; i >= 0; i--) {
-        // set our current dot to White
-        leds4[i] = CRGB::Black;
-        FastLED.show();
-        
-        // clear our current dot before we move on
-        vTaskDelay(SPEED);
-      }
+      pattern1:;
+  }
       //end of turn off other tracks
-    }
-  }
-  }
-  
-    if(ON_SWITCH == false){
-      Serial.println("OFF");
-      for(int i = NUM_LEDS_PER_STRIP-1; i >= 0; i--) {
-        // set our current dot to White
-        leds1[i] = CRGB::Black;
-        FastLED.show();
-        
-        // clear our current dot before we move on
-        vTaskDelay(SPEED);
-      }
-    }
 
-    //end of track one
+    //end of track one---------------------------------------------------------------------
 
-    //start of track two
-  Serial.println("changeLEDs");
-  if(ON_SWITCH == true){
-    if(TRACK_TWO == true){
+    //start of track two---------------------------------------------------------------------
+    if(TRACK_TWO){
+    Serial.println("changeLEDs");  
     Serial.println("ON 1");
-      for(int i = 0; i < NUM_LEDS_PER_STRIP; i++) 
+      for(int i = 0; i < NUM_LEDS_PER_STRIP && !CHANGED; i++) 
       {
         // Green loop
         // set our current dot to Red
@@ -190,13 +168,19 @@ void changeLEDs(void * pvParameters){
         // clear our current dot before we move on
         leds2[i] = CRGB::Green;
         vTaskDelay(SPEED);
+        if(CHANGED){
+          CHANGED = false;
+          blackout();
+          goto pattern2;
+        }
       }
-  
-    
-    if(ON_SWITCH == true)
-    {    
+      if(CHANGED){
+          CHANGED = false;
+          blackout();
+          goto pattern2;
+      }
       Serial.println("ON 2");
-      for(int i = NUM_LEDS_PER_STRIP-1; i >= 0; i--)
+      for(int i = NUM_LEDS_PER_STRIP-1; i >= 0 && !CHANGED; i--)
       {
         // set our current dot to White
         leds2[i] = CRGB::Black;
@@ -204,29 +188,21 @@ void changeLEDs(void * pvParameters){
         // clear our current dot before we move on
         leds2[i] = CRGB::Blue;
         vTaskDelay(SPEED);
+        if(CHANGED){
+          CHANGED = false;
+          blackout();
+          goto pattern2;
+        }
       }
+      pattern2:;
     }
-  }
-  }
-  
-    if(ON_SWITCH == false){
-      Serial.println("OFF");
-      for(int i = NUM_LEDS_PER_STRIP-1; i >= 0; i--) {
-        // set our current dot to White
-        leds2[i] = CRGB::Black;
-        FastLED.show();
-        
-        // clear our current dot before we move on
-        vTaskDelay(SPEED);
-      }
-    }
-//End of track two
-//start of track three
-  Serial.println("changeLEDs");
-  if(ON_SWITCH == true){
-    if(TRACK_THREE == true){
+//End of track two---------------------------------------------------------------------
+
+//start of track three---------------------------------------------------------------------
+  if(TRACK_THREE){
+    Serial.println("TRACK THREE1");
     Serial.println("ON 1");
-      for(int i = 0; i < NUM_LEDS_PER_STRIP; i++) 
+      for(int i = 0; i < NUM_LEDS_PER_STRIP && !CHANGED; i++) 
       {
         // Green loop
         // set our current dot to Red
@@ -235,13 +211,21 @@ void changeLEDs(void * pvParameters){
         // clear our current dot before we move on
         leds3[i] = CRGB::Green;
         vTaskDelay(SPEED);
+        if(CHANGED){
+          CHANGED = false;
+          blackout();
+          goto pattern3;
+        }
       }
-  
-    
-    if(ON_SWITCH == true)
-    {    
+      Serial.println("TRACK THREE2");
+      if(CHANGED){
+          CHANGED = false;
+          blackout();
+          goto pattern3;
+      }
+      Serial.println("TRACK THREE3");
       Serial.println("ON 2");
-      for(int i = NUM_LEDS_PER_STRIP-1; i >= 0; i--)
+      for(int i = 0; i < NUM_LEDS_PER_STRIP && !CHANGED; i++)
       {
         // set our current dot to White
         leds3[i] = CRGB::Black;
@@ -249,29 +233,22 @@ void changeLEDs(void * pvParameters){
         // clear our current dot before we move on
         leds3[i] = CRGB::Blue;
         vTaskDelay(SPEED);
+        if(CHANGED){
+          CHANGED = false;
+          blackout();
+          goto pattern3;
+        }
       }
-    }
+      Serial.println("TRACK THREE4");
+      pattern3:;
   }
-  }
-  
-    if(ON_SWITCH == false){
-      Serial.println("OFF");
-      for(int i = NUM_LEDS_PER_STRIP-1; i >= 0; i--) {
-        // set our current dot to White
-        leds3[i] = CRGB::Black;
-        FastLED.show();
-        
-        // clear our current dot before we move on
-        vTaskDelay(SPEED);
-      }
-    }
-    //end of track three
-    //start of track four
-  Serial.println("changeLEDs");
-  if(ON_SWITCH == true){
-    if(TRACK_FOUR == true){
-    Serial.println("ON 1");
-      for(int i = 0; i < NUM_LEDS_PER_STRIP; i++) 
+    //end of track three---------------------------------------------------------------------
+    
+    //start of track four---------------------------------------------------------------------
+    if(TRACK_FOUR){
+      Serial.println("TRACK FOUR1");
+      Serial.println("ON 1");
+      for(int i = 0; i < NUM_LEDS_PER_STRIP && !CHANGED; i++) 
       {
         // Green loop
         // set our current dot to Red
@@ -280,13 +257,21 @@ void changeLEDs(void * pvParameters){
         // clear our current dot before we move on
         leds4[i] = CRGB::Green;
         vTaskDelay(SPEED);
+        if(CHANGED){
+          CHANGED = false;
+          blackout();
+          goto pattern4;
+        }
       }
-  
-    
-    if(ON_SWITCH == true)
-    {    
+      Serial.println("TRACK FOUR2");
+      if(CHANGED){
+          CHANGED = false;
+          blackout();
+          goto pattern4;
+      }
+      Serial.println("TRACK FOUR3");
       Serial.println("ON 2");
-      for(int i = NUM_LEDS_PER_STRIP-1; i >= 0; i--)
+      for(int i = 0; i < NUM_LEDS_PER_STRIP && !CHANGED; i++)
       {
         // set our current dot to White
         leds4[i] = CRGB::Black;
@@ -294,25 +279,43 @@ void changeLEDs(void * pvParameters){
         // clear our current dot before we move on
         leds4[i] = CRGB::Blue;
         vTaskDelay(SPEED);
+        if(CHANGED){
+          CHANGED = false;
+          blackout();
+          goto pattern4;
+        }
       }
+      pattern4:;
+      Serial.println("TRACK FOUR4");
     }
-  }
-  }
-  
-    if(ON_SWITCH == false){
+    //end of track four---------------------------------------------------------------------
+    
+    //end of while loop
+  }else{ //end of on switch if statement
       Serial.println("OFF");
       for(int i = NUM_LEDS_PER_STRIP-1; i >= 0; i--) {
         // set our current dot to White
+        leds1[i] = CRGB::Black;
+        leds2[i] = CRGB::Black;
+        leds3[i] = CRGB::Black;
         leds4[i] = CRGB::Black;
         FastLED.show();
-        
-        // clear our current dot before we move on
-        vTaskDelay(SPEED);
-      }
     }
-    //end of track four
-    //end of while loop
   }
+  }
+}
+
+void blackout(){
+  Serial.println("OFF");
+  for(int i = NUM_LEDS_PER_STRIP-1; i >= 0; i--) {
+    // set our current dot to White
+    leds1[i] = CRGB::Black;
+    leds2[i] = CRGB::Black;
+    leds3[i] = CRGB::Black;
+    leds4[i] = CRGB::Black;
+  }
+  FastLED.show();
+  vTaskDelay(10);
 }
 
 void disableWiFi(){
